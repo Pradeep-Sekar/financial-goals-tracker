@@ -19,7 +19,7 @@ def initialize_db():
             target_amount REAL NOT NULL,
             time_horizon INTEGER NOT NULL,
             cagr REAL DEFAULT 12,
-            investment_mode TEXT CHECK(investment_mode IN ('SIP', 'Lumpsum', 'SIP + Lumpsum')) NOT NULL,
+            investment_mode TEXT CHECK(investment_mode IN ('SIP', 'Lumpsum', 'Lumpsum + SIP')) NOT NULL,
             initial_investment REAL,
             sip_amount REAL,
             start_date TEXT DEFAULT CURRENT_DATE,
