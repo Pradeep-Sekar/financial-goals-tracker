@@ -74,7 +74,7 @@ def get_user_input():
         "time_horizon": time_horizon,
         "cagr": cagr,
         "investment_mode": investment_mode,
-        "lumpsum": lumpsum,
+        "initial_investment": lumpsum,
         "sip": sip,
         "start_date": start_date
     }
