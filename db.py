@@ -49,7 +49,7 @@ def insert_goal(goal_data):
         goal_data["initial_investment"],
         goal_data["sip_amount"],
         goal_data["start_date"],
-        goal_data["notes"]
+        "" # goal_data["notes"] - Add a placeholder for notes
     ))
 
 def fetch_goals():
