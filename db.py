@@ -47,7 +47,7 @@ def insert_goal(goal_data):
         goal_data["cagr"],
         goal_data["investment_mode"],
         goal_data["initial_investment"],
-        goal_data["sip_amount"],
+        goal_data["sip"],
         goal_data["start_date"],
         "" # goal_data["notes"] - Add a placeholder for notes
     ))
