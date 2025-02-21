@@ -47,10 +47,13 @@ def insert_goal(goal_data):
         goal_data["cagr"],
         goal_data["investment_mode"],
         goal_data["initial_investment"],
-        goal_data["sip"],
+        goal_data["sip_amount"],  # <-- Updated to match get_user_input()
         goal_data["start_date"],
-        "" # goal_data["notes"] - Add a placeholder for notes
+        goal_data["notes"]
     ))
+
+    conn.commit()  # <-- Ensure this line exists
+    conn.close()
 
 def fetch_goals():
     """Retrieve all saved financial goals from the database."""
@@ -58,7 +61,7 @@ def fetch_goals():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT id, goal_name, target_amount, time_horizon, cagr, investment_mode, initial_investment, sip_amount, start_date, created_at
+        SELECT id, goal_name, target_amount, time_horizon, cagr, investment_mode, initial_investment, sip_amount, start_date, created_at, notes
         FROM goals
         ORDER BY created_at DESC
     """)
