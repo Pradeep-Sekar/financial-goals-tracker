@@ -1,0 +1,18 @@
+[project]
+name = "financial-goals-tracker"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "openai",
+    "anthropic",
+    "google-generativeai",
+    "python-dotenv",
+    "click",
+    "sqlite-utils",
+    "rich",
+]
+
+[project.scripts]
+financial-tracker = "financial_goals_tracker.main:main"

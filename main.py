@@ -1,6 +1,7 @@
 from rich.table import Table
 from rich.console import Console
 from rich.prompt import IntPrompt
+import db
 
 console = Console()
 import db
@@ -24,6 +25,7 @@ def display_goals():
     table.add_column("SIP (INR)", justify="right")
     table.add_column("Start Date", justify="center")
     table.add_column("Created At", justify="center")
+    table.add_column("Notes", justify="center")
 
     for goal in goals:
         table.add_row(
@@ -36,37 +38,46 @@ def display_goals():
             f"{goal[6]:,.2f}" if goal[6] else "-",  # Lumpsum Investment
             f"{goal[7]:,.2f}" if goal[7] else "-",  # SIP Amount
             goal[8] if goal[8] else "-",  # Start Date
-            goal[9],       # Created At
+            goal[9] if goal[9] else "-",      # Created At
+            goal[10],   # Notes
         )
 
     console.print(table)
-
 def get_user_input():
     """Prompt user for goal details and return as a dictionary."""
     goal_name = console.input("[bold]Enter goal name:[/bold] ")
     target_amount = IntPrompt.ask("[bold]Enter target amount (INR):[/bold] ")
     time_horizon = IntPrompt.ask("[bold]Enter time horizon (years):[/bold] ")
     cagr = IntPrompt.ask("[bold]Enter expected CAGR (%):[/bold] ")
-    console.print("[bold]Select investment mode:[/bold]")
-    console.print("1. SIP")
-    console.print("2. Lumpsum")
-    console.print("3. Lumpsum + SIP")
+
+    # Investment Mode Selection
+    console.print("\n[bold cyan]Select Investment Mode:[/bold cyan]")
+    console.print("[bold yellow]1[/bold yellow]: SIP")
+    console.print("[bold yellow]2[/bold yellow]: Lumpsum")
+    console.print("[bold yellow]3[/bold yellow]: SIP + Lumpsum")
 
     while True:
-        mode_choice = IntPrompt.ask("[bold]Choose an option (1-3)[/bold]")
+        mode_choice = IntPrompt.ask("[bold]Choose an option (1-3):[/bold] ")
         if mode_choice in [1, 2, 3]:
+            investment_modes = {1: "SIP", 2: "Lumpsum", 3: "SIP + Lumpsum"}
+            investment_mode = investment_modes[mode_choice]
             break
-        console.print("[red]Invalid choice. Please select a valid option (1, 2, or 3).[/red]")
+        console.print("[red]Invalid choice. Please select 1, 2, or 3.[/red]")
 
-    investment_modes = {
-        1: "SIP",
-        2: "Lumpsum",
-        3: "Lumpsum + SIP"
-    }
-    investment_mode = investment_modes[mode_choice]
-    lumpsum = IntPrompt.ask("[bold]Enter lumpsum amount (INR) (if applicable):[/bold] ", default=0)
-    sip = IntPrompt.ask("[bold]Enter SIP amount (INR) (if applicable):[/bold] ", default=0)
-    start_date = console.input("[bold]Enter start date (YYYY-MM-DD):[/bold] ")
+    # Ask for investment amounts based on mode
+    initial_investment = 0
+    sip_amount = 0
+
+    if investment_mode in ["Lumpsum", "SIP + Lumpsum"]:
+        initial_investment = IntPrompt.ask("[bold]Enter lumpsum amount (INR) (if applicable):[/bold] ", default=0)
+
+    if investment_mode in ["SIP", "SIP + Lumpsum"]:
+        sip_amount = IntPrompt.ask("[bold]Enter SIP amount (INR) (if applicable):[/bold] ", default=0)
+
+    # Start Date Input
+    start_date = console.input("[bold]Enter start date (YYYY-MM-DD):[/bold] ") or None
+
+    notes = console.input("[bold]Enter notes (optional, press Enter to skip):[/bold] ") or None
 
     return {
         "goal_name": goal_name,
@@ -74,9 +85,10 @@ def get_user_input():
         "time_horizon": time_horizon,
         "cagr": cagr,
         "investment_mode": investment_mode,
-        "initial_investment": lumpsum,
-        "sip": sip,
-        "start_date": start_date
+        "initial_investment": initial_investment,
+        "sip_amount": sip_amount,
+        "start_date": start_date,
+        "notes": notes  # Now included in the return dictionary
     }
 
 def main_menu():
