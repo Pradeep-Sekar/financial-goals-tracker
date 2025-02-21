@@ -47,7 +47,23 @@ def get_user_input():
     target_amount = IntPrompt.ask("[bold]Enter target amount (INR):[/bold] ")
     time_horizon = IntPrompt.ask("[bold]Enter time horizon (years):[/bold] ")
     cagr = IntPrompt.ask("[bold]Enter expected CAGR (%):[/bold] ")
-    investment_mode = console.input("[bold]Enter investment mode (Lumpsum/SIP):[/bold] ")
+    console.print("[bold]Select investment mode:[/bold]")
+    console.print("1. SIP")
+    console.print("2. Lumpsum")
+    console.print("3. Lumpsum + SIP")
+
+    while True:
+        mode_choice = IntPrompt.ask("[bold]Choose an option (1-3)[/bold]")
+        if mode_choice in [1, 2, 3]:
+            break
+        console.print("[red]Invalid choice. Please select a valid option (1, 2, or 3).[/red]")
+
+    investment_modes = {
+        1: "SIP",
+        2: "Lumpsum",
+        3: "Lumpsum + SIP"
+    }
+    investment_mode = investment_modes[mode_choice]
     lumpsum = IntPrompt.ask("[bold]Enter lumpsum amount (INR) (if applicable):[/bold] ", default=0)
     sip = IntPrompt.ask("[bold]Enter SIP amount (INR) (if applicable):[/bold] ", default=0)
     start_date = console.input("[bold]Enter start date (YYYY-MM-DD):[/bold] ")
