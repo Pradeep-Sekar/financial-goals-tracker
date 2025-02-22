@@ -92,3 +92,22 @@ def goal_exists(goal_id):
 
     conn.close()
     return exists
+
+def update_goal(goal_id, field, new_value):
+    """Update a specific field of a goal in the database."""
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    # Ensure only allowed fields can be updated
+    allowed_fields = ["goal_name", "target_amount", "time_horizon", "cagr",
+                      "investment_mode", "initial_investment", "sip_amount", "start_date", "notes"]
+
+    if field not in allowed_fields:
+        conn.close()
+        raise ValueError(f"Invalid field: {field}")
+
+    query = f"UPDATE goals SET {field} = ? WHERE id = ?"
+    cursor.execute(query, (new_value, goal_id))
+
+    conn.commit()
+    conn.close()

@@ -197,6 +197,64 @@ def delete_goal_menu():
     else:
         console.print("[yellow]Deletion canceled.[/yellow]")
 
+def edit_goal_menu():
+    """Allow the user to edit multiple fields of a goal in one session."""
+    display_goals()  # Show existing goals
+
+    goal_id = get_numeric_input("Enter the ID of the goal to edit (or 0 to cancel):", default=0)
+
+    if goal_id == 0:
+        console.print("[yellow]Edit canceled.[/yellow]")
+        return
+
+    if not db.goal_exists(goal_id):
+        console.print("[red]Error: No goal found with this ID.[/red]")
+        return
+
+    console.print("\n[bold cyan]Select fields to edit (enter multiple numbers separated by commas):[/bold cyan]")
+    fields = {
+        "1": "goal_name",
+        "2": "target_amount",
+        "3": "time_horizon",
+        "4": "cagr",
+        "5": "investment_mode",
+        "6": "initial_investment",
+        "7": "sip_amount",
+        "8": "start_date",
+        "9": "notes"
+    }
+
+    for key, field in fields.items():
+        console.print(f"[bold yellow]{key}[/bold yellow]: {field.replace('_', ' ').title()}")
+
+    selected_fields = console.input("[bold]Enter field numbers to edit (comma-separated, e.g., 2,3,5):[/bold] ").strip()
+
+    selected_fields = selected_fields.split(",")  # Convert input into a list
+    selected_fields = [field.strip() for field in selected_fields if field.strip() in fields]  # Validate input
+
+    if not selected_fields:
+        console.print("[red]No valid fields selected. Returning to main menu.[/red]")
+        return
+
+    updated_data = {}
+    
+    for field_choice in selected_fields:
+        field_name = fields[field_choice]
+        new_value = console.input(f"[bold]Enter new value for {field_name.replace('_', ' ').title()}:[/bold] ").strip()
+        updated_data[field_name] = new_value
+
+    console.print("\n[bold cyan]Confirm changes:[/bold cyan]")
+    for field, value in updated_data.items():
+        console.print(f"  [bold yellow]{field.replace('_', ' ').title()}[/bold yellow]: {value}")
+
+    confirm = console.input("[bold red]Are you sure you want to update these fields? (y)es/(n)o):[/bold red] ").strip().lower()
+    if confirm == "y":
+        for field, value in updated_data.items():
+            db.update_goal(goal_id, field, value)
+        console.print("[green]Goal updated successfully![/green]")
+    else:
+        console.print("[yellow]Edit canceled.[/yellow]")
+
 def main_menu():
     """Display CLI menu with Rich UI."""
     while True:
@@ -209,20 +267,21 @@ def main_menu():
         table.add_row("1", "Add Goal")
         table.add_row("2", "View Goals")
         table.add_row("3", "Goal Calculator")
-        table.add_row("4", "Delete Goal")  # New option
-        table.add_row("5", "Exit")  # Shift exit to option 5
+        table.add_row("4", "Edit Goal")  # New option
+        table.add_row("5", "Delete Goal")
+        table.add_row("6", "Exit")  # Shift exit to option 6
 
         console.print(table)
 
         while True:
-            choice = Prompt.ask("[bold]Choose an option (1-5)[/bold]")
+            choice = Prompt.ask("[bold]Choose an option (1-6)[/bold]")
             try:
                 choice = int(choice)  # Convert input manually
-                if choice in [1, 2, 3, 4, 5]:
+                if choice in [1, 2, 3, 4, 5, 6]:
                     break
-                console.print("[red]Invalid choice. Please select a valid option (1-5).[/red]")
+                console.print("[red]Invalid choice. Please select a valid option (1-6).[/red]")
             except ValueError:
-                console.print("[red]Invalid input. Please enter a number (1-5).[/red]")
+                console.print("[red]Invalid input. Please enter a number (1-6).[/red]")
 
         if choice == 1:
             goal_data = get_user_input()
@@ -236,9 +295,12 @@ def main_menu():
             goal_calculator_menu()
 
         elif choice == 4:
+            edit_goal_menu()
+
+        elif choice == 5:
              delete_goal_menu()
             
-        elif choice == 5:
+        elif choice == 6:
             console.print("[bold red]Exiting program.[/bold red]")
             break
 if __name__ == "__main__":
