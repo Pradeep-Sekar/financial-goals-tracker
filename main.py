@@ -3,6 +3,7 @@ from rich.table import Table
 from rich.console import Console
 from rich.prompt import Prompt
 import db
+import investment_recommendation 
 
 console = Console()
 import db
@@ -116,6 +117,8 @@ def goal_calculator_menu():
     console.print("[bold yellow]1[/bold yellow]: SIP")
     console.print("[bold yellow]2[/bold yellow]: Lumpsum")
     console.print("[bold yellow]3[/bold yellow]: SIP + Lumpsum")
+    recommendation = investment_recommendation.recommend_investment(time_horizon, cagr)
+    console.print(f"\n[bold green]Recommended Investment:[/bold green] {recommendation}")
 
     while True:
         mode_choice = Prompt.ask("[bold]Choose an option (1-3):[/bold] ")
@@ -174,6 +177,8 @@ def goal_calculator_menu():
             table.add_row("SIP (Monthly)", f"{sip:,.2f}")
 
         console.print(table)
+        recommendation = investment_recommendation.recommend_investment(time_horizon, cagr)
+        console.print(f"\n[bold green]Recommended Investment:[/bold green] {recommendation}")
 
 def delete_goal_menu():
     """Allow the user to delete a goal by selecting its ID."""
