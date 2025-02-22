@@ -72,3 +72,23 @@ def fetch_goals():
 
     conn.commit()
     conn.close()
+
+def delete_goal(goal_id):
+    """Delete a goal from the database by its ID."""
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM goals WHERE id = ?", (goal_id,))
+    conn.commit()
+    conn.close()
+
+def goal_exists(goal_id):
+    """Check if a goal with the given ID exists in the database."""
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM goals WHERE id = ?", (goal_id,))
+    exists = cursor.fetchone()[0] > 0
+
+    conn.close()
+    return exists

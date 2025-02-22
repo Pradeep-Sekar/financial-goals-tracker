@@ -131,11 +131,23 @@ def goal_calculator_menu():
 
     if mode_choice == 1:
         sip_amount = goals_calculator.calculate_sip(target_amount, time_horizon, cagr)
-        table.add_row("SIP (Monthly)", f"{sip_amount:,.2f}")
+        table = Table(title="Investment Calculation")
+        table.add_column("Investment Mode", style="bold cyan")
+        table.add_column("Required Investment (INR)", justify="right")
 
-    elif mode_choice == 2:
+        table.add_row("SIP (Monthly)", f"{sip_amount:,.2f}")
+        console.print(table)  # Ensure results are displayed before returning
+        console.input("\nPress Enter to return to the main menu...")  # Pause before returning
+
+    elif mode_choice == 2:  # Lumpsum Calculation
         lumpsum = goals_calculator.calculate_lumpsum(target_amount, time_horizon, cagr)
+        table = Table(title="Investment Calculation")
+        table.add_column("Investment Mode", style="bold cyan")
+        table.add_column("Required Investment (INR)", justify="right")
+
         table.add_row("Lumpsum (Today)", f"{lumpsum:,.2f}")
+        console.print(table)
+        console.input("\nPress Enter to return to the main menu...")  # Pause before exiting
 
     elif mode_choice == 3:
         console.print("\n[bold cyan]Choose how to allocate your Lumpsum investment:[/bold cyan]")
@@ -163,6 +175,28 @@ def goal_calculator_menu():
 
         console.print(table)
 
+def delete_goal_menu():
+    """Allow the user to delete a goal by selecting its ID."""
+    display_goals()  # Show existing goals
+
+    goal_id = get_numeric_input("Enter the ID of the goal to delete (or 0 to cancel):", default=0)
+    
+    if goal_id == 0:
+        console.print("[yellow]Deletion canceled.[/yellow]")
+        return
+
+    # Verify that the goal exists before confirming deletion
+    if not db.goal_exists(goal_id):
+        console.print("[red]Error: No goal found with this ID.[/red]")
+        return
+
+    confirm = console.input("[bold red]Are you sure you want to delete this goal? (yes/no):[/bold red] ").strip().lower()
+    if confirm == "yes":
+        db.delete_goal(goal_id)
+        console.print("[green]Goal deleted successfully![/green]")
+    else:
+        console.print("[yellow]Deletion canceled.[/yellow]")
+
 def main_menu():
     """Display CLI menu with Rich UI."""
     while True:
@@ -175,19 +209,20 @@ def main_menu():
         table.add_row("1", "Add Goal")
         table.add_row("2", "View Goals")
         table.add_row("3", "Goal Calculator")
-        table.add_row("4", "Exit")
+        table.add_row("4", "Delete Goal")  # New option
+        table.add_row("5", "Exit")  # Shift exit to option 5
 
         console.print(table)
 
         while True:
-            choice = Prompt.ask("[bold]Choose an option (1-4)[/bold]")
+            choice = Prompt.ask("[bold]Choose an option (1-5)[/bold]")
             try:
                 choice = int(choice)  # Convert input manually
-                if choice in [1, 2, 3, 4]:
+                if choice in [1, 2, 3, 4, 5]:
                     break
-                console.print("[red]Invalid choice. Please select a valid option (1-4).[/red]")
+                console.print("[red]Invalid choice. Please select a valid option (1-5).[/red]")
             except ValueError:
-                console.print("[red]Invalid input. Please enter a number (1-4).[/red]")
+                console.print("[red]Invalid input. Please enter a number (1-5).[/red]")
 
         if choice == 1:
             goal_data = get_user_input()
@@ -201,9 +236,11 @@ def main_menu():
             goal_calculator_menu()
 
         elif choice == 4:
+             delete_goal_menu()
+            
+        elif choice == 5:
             console.print("[bold red]Exiting program.[/bold red]")
             break
-
 if __name__ == "__main__":
     db.initialize_db()  # Ensure DB is set up
     main_menu()
