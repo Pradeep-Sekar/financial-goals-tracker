@@ -12,6 +12,7 @@ dependencies = [
     "click",
     "sqlite-utils",
     "rich",
+    "matplotlib",
 ]
 
 [project.scripts]

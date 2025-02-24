@@ -240,3 +240,33 @@ def fetch_all_contributions():
     contributions = cursor.fetchall()
     conn.close()
     return contributions
+
+def fetch_contributions_for_graph(goal_id):
+    """Retrieve contribution amounts and dates for graphing."""
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT date, SUM(amount) 
+        FROM contributions 
+        WHERE goal_id = ? 
+        GROUP BY date 
+        ORDER BY date ASC
+    """, (goal_id,))
+    data = cursor.fetchall()
+    conn.close()
+    return data  # List of (date, total amount contributed)
+
+def fetch_goal_by_id(goal_id):
+    """Retrieve a specific goal by its ID."""
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, goal_name, target_amount 
+        FROM goals 
+        WHERE id = ?
+    """, (goal_id,))
+
+    goal = cursor.fetchone()  # Fetch one goal
+    conn.close()
+    return goal  # Returns (id, goal_name, target_amount) or None if not found

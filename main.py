@@ -5,6 +5,8 @@ from rich.prompt import Prompt
 import db
 import investment_recommendation 
 import csv
+import matplotlib.pyplot as plt
+from datetime import datetime
 
 console = Console()
 
@@ -351,6 +353,62 @@ def export_to_csv():
 
     console.print(f"[green]Contributions exported successfully to {contributions_filename}[/green]")
 
+def plot_goal_progress(goal_id, goal_name, target_amount):
+    """Generate a progress graph for a financial goal."""
+    contributions = db.fetch_contributions_for_graph(goal_id)
+
+    if not contributions:
+        console.print("[yellow]No contributions recorded for this goal.[/yellow]")
+        return
+
+    # Convert data into lists for plotting
+    dates = [datetime.strptime(entry[0], "%Y-%m-%d") for entry in contributions]
+    amounts = [entry[1] for entry in contributions]
+
+    # Generate cumulative sum for progress tracking
+    cumulative_contributions = [sum(amounts[:i+1]) for i in range(len(amounts))]
+
+    # Expected progress line (assuming uniform contributions)
+    expected_dates = [dates[0], dates[-1]]
+    expected_amounts = [0, target_amount]
+
+    # Plot the graph
+    plt.figure(figsize=(8, 5))
+    plt.plot(dates, cumulative_contributions, marker='o', linestyle='-', color='blue', label="Actual Contributions")
+    plt.plot(expected_dates, expected_amounts, linestyle="dashed", color="red", label="Expected Progress")
+    
+    plt.xlabel("Date")
+    plt.ylabel("Amount (INR)")
+    plt.title(f"Progress for {goal_name}")
+    plt.legend()
+    plt.grid(True)
+
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+def view_progress_graph_menu():
+    """Allow users to view a progress graph for a selected goal."""
+    display_goals()  # Show available goals
+
+    goal_id = Prompt.ask("[bold]Enter the ID of the goal to view progress (or 0 to cancel):[/bold]").strip()
+    if goal_id == "0":
+        console.print("[yellow]Returning to main menu.[/yellow]")
+        return
+
+    if not goal_id.isdigit():
+        console.print("[red]Invalid input. Please enter a valid goal ID.[/red]")
+        return
+    goal_id = int(goal_id)
+
+    goal_data = db.fetch_goal_by_id(goal_id)  # Fetch goal details
+    if not goal_data:
+        console.print("[red]Goal not found.[/red]")
+        return
+
+    goal_name, target_amount = goal_data[1], goal_data[2]
+    plot_goal_progress(goal_id, goal_name, target_amount)
+
 def main_menu():
     """Display CLI menu with Rich UI."""
     while True:
@@ -367,20 +425,21 @@ def main_menu():
         table.add_row("5", "Delete Goal")
         table.add_row("6", "Log Contribution")
         table.add_row("7", "View Contributions")
-        table.add_row("8", "Export to CSV") 
-        table.add_row("9", "Exit")
+        table.add_row("8", "Export to CSV")
+        table.add_row("9", "View Progress Graph") 
+        table.add_row("10", "Exit")
 
         console.print(table)
 
         while True:
-            choice = Prompt.ask("[bold]Choose an option (1-9)[/bold]")
+            choice = Prompt.ask("[bold]Choose an option (1-10)[/bold]")
             try:
                 choice = int(choice)  # Convert input manually
-                if choice in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
+                if choice in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
                     break
-                console.print("[red]Invalid choice. Please select a valid option (1-9).[/red]")
+                console.print("[red]Invalid choice. Please select a valid option (1-10).[/red]")
             except ValueError:
-                console.print("[red]Invalid input. Please enter a number (1-9).[/red]")
+                console.print("[red]Invalid input. Please enter a number (1-10).[/red]")
 
         if choice == 1:
             goal_data = get_user_input()
@@ -407,8 +466,11 @@ def main_menu():
 
         elif choice == 8:
             export_to_csv()
-            
+
         elif choice == 9:
+            view_progress_graph_menu()
+            
+        elif choice == 10:
             console.print("[bold red]Exiting program.[/bold red]")
             break
 
