@@ -6,7 +6,6 @@ import db
 import investment_recommendation 
 
 console = Console()
-import db
 
 def display_goals():
     """Fetch and display saved financial goals in a table format."""
@@ -27,9 +26,15 @@ def display_goals():
     table.add_column("SIP (INR)", justify="right")
     table.add_column("Start Date", justify="center")
     table.add_column("Created At", justify="center")
-    table.add_column("Notes", justify="center")
+    table.add_column("Notes", style="italic")
+    table.add_column("Total Contributions", justify="right", style="green")  # New Column
+    table.add_column("Progress (%)", justify="right", style="magenta")  # New Column
 
     for goal in goals:
+        goal_id = goal[0]  # ID
+        total_contributions = db.get_goal_total_contributions(goal_id)  # Fetch from DB
+        progress = (total_contributions / goal[2]) * 100 if goal[2] > 0 else 0  # Calculate %
+
         table.add_row(
             str(goal[0]),  # ID
             goal[1],       # Goal Name
@@ -42,6 +47,8 @@ def display_goals():
             goal[8] if goal[8] else "-",  # Start Date
             goal[9] if goal[9] else "-",      # Created At
             goal[10],   # Notes
+            f"{total_contributions:,.2f}",  # Display Contributions
+            f"{progress:.2f}%"  # Display Progress
         )
 
     console.print(table)
@@ -260,6 +267,31 @@ def edit_goal_menu():
     else:
         console.print("[yellow]Edit canceled.[/yellow]")
 
+def log_contribution_menu():
+    """Allow users to log contributions for a goal."""
+    display_goals()  # Show available goals
+
+    goal_id = Prompt.ask("[bold]Enter the ID of the goal to contribute to (or 0 to cancel):[/bold]").strip()
+    if goal_id == "0":
+        console.print("[yellow]Contribution canceled.[/yellow]")
+        return
+
+    # Ensure the goal_id is numeric
+    if not goal_id.isdigit():
+        console.print("[red]Invalid input. Please enter a valid goal ID.[/red]")
+        return
+    goal_id = int(goal_id)
+
+    amount = Prompt.ask("[bold]Enter contribution amount (INR):[/bold]").strip()
+    if not amount.replace(".", "").isdigit():
+        console.print("[red]Invalid amount. Please enter a valid number.[/red]")
+        return
+    amount = float(amount)
+
+    date = Prompt.ask("[bold]Enter contribution date (YYYY-MM-DD):[/bold]").strip()
+
+    db.log_contribution(goal_id, amount, date)
+
 def main_menu():
     """Display CLI menu with Rich UI."""
     while True:
@@ -274,19 +306,20 @@ def main_menu():
         table.add_row("3", "Goal Calculator")
         table.add_row("4", "Edit Goal")  # New option
         table.add_row("5", "Delete Goal")
-        table.add_row("6", "Exit")  # Shift exit to option 6
+        table.add_row("6", "Log Contribution")
+        table.add_row("7", "Exit")
 
         console.print(table)
 
         while True:
-            choice = Prompt.ask("[bold]Choose an option (1-6)[/bold]")
+            choice = Prompt.ask("[bold]Choose an option (1-7)[/bold]")
             try:
                 choice = int(choice)  # Convert input manually
-                if choice in [1, 2, 3, 4, 5, 6]:
+                if choice in [1, 2, 3, 4, 5, 6, 7]:
                     break
-                console.print("[red]Invalid choice. Please select a valid option (1-6).[/red]")
+                console.print("[red]Invalid choice. Please select a valid option (1-7).[/red]")
             except ValueError:
-                console.print("[red]Invalid input. Please enter a number (1-6).[/red]")
+                console.print("[red]Invalid input. Please enter a number (1-7).[/red]")
 
         if choice == 1:
             goal_data = get_user_input()
@@ -304,8 +337,11 @@ def main_menu():
 
         elif choice == 5:
              delete_goal_menu()
-            
+
         elif choice == 6:
+            log_contribution_menu()
+            
+        elif choice == 7:
             console.print("[bold red]Exiting program.[/bold red]")
             break
 if __name__ == "__main__":
