@@ -4,6 +4,7 @@ from rich.console import Console
 from rich.prompt import Prompt
 import db
 import investment_recommendation 
+import csv
 
 console = Console()
 
@@ -324,6 +325,32 @@ def view_contributions_menu():
 
     console.print(table)
 
+def export_to_csv():
+    """Export financial goals and contributions to CSV files."""
+    goals = db.fetch_all_goals()
+    contributions = db.fetch_all_contributions()
+
+    goals_filename = "goals_export.csv"
+    contributions_filename = "contributions_export.csv"
+
+    # Export goals to CSV
+    with open(goals_filename, mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(["ID", "Goal Name", "Target Amount", "Time Horizon", "CAGR (%)",
+                         "Investment Mode", "Lumpsum (INR)", "SIP (INR)", "Start Date",
+                         "Created At", "Notes", "Total Contributions"])
+        writer.writerows(goals)
+
+    console.print(f"[green]Goals exported successfully to {goals_filename}[/green]")
+
+    # Export contributions to CSV
+    with open(contributions_filename, mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(["ID", "Goal ID", "Goal Name", "Amount (INR)", "Date"])
+        writer.writerows(contributions)
+
+    console.print(f"[green]Contributions exported successfully to {contributions_filename}[/green]")
+
 def main_menu():
     """Display CLI menu with Rich UI."""
     while True:
@@ -340,19 +367,20 @@ def main_menu():
         table.add_row("5", "Delete Goal")
         table.add_row("6", "Log Contribution")
         table.add_row("7", "View Contributions")
-        table.add_row("8", "Exit")
+        table.add_row("8", "Export to CSV") 
+        table.add_row("9", "Exit")
 
         console.print(table)
 
         while True:
-            choice = Prompt.ask("[bold]Choose an option (1-8)[/bold]")
+            choice = Prompt.ask("[bold]Choose an option (1-9)[/bold]")
             try:
                 choice = int(choice)  # Convert input manually
-                if choice in [1, 2, 3, 4, 5, 6, 7, 8]:
+                if choice in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
                     break
-                console.print("[red]Invalid choice. Please select a valid option (1-8).[/red]")
+                console.print("[red]Invalid choice. Please select a valid option (1-9).[/red]")
             except ValueError:
-                console.print("[red]Invalid input. Please enter a number (1-8).[/red]")
+                console.print("[red]Invalid input. Please enter a number (1-9).[/red]")
 
         if choice == 1:
             goal_data = get_user_input()
@@ -376,8 +404,11 @@ def main_menu():
 
         elif choice == 7:
             view_contributions_menu()
-            
+
         elif choice == 8:
+            export_to_csv()
+            
+        elif choice == 9:
             console.print("[bold red]Exiting program.[/bold red]")
             break
 

@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime
 import os
 from rich.console import Console
+import csv
 
 console = Console()
 
@@ -209,6 +210,33 @@ def fetch_contributions(goal_id):
         WHERE goal_id = ? ORDER BY date DESC
     """, (goal_id,))
 
+    contributions = cursor.fetchall()
+    conn.close()
+    return contributions
+
+def fetch_all_goals():
+    """Retrieve all financial goals."""
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, goal_name, target_amount, time_horizon, cagr, investment_mode,
+               initial_investment, sip_amount, start_date, created_at, notes, contributions_total
+        FROM goals
+    """)
+    goals = cursor.fetchall()
+    conn.close()
+    return goals
+
+def fetch_all_contributions():
+    """Retrieve all contributions."""
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT contributions.id, goal_id, goal_name, amount, date
+        FROM contributions
+        JOIN goals ON contributions.goal_id = goals.id
+        ORDER BY date DESC
+    """)
     contributions = cursor.fetchall()
     conn.close()
     return contributions
