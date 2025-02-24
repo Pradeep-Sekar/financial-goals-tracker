@@ -293,6 +293,37 @@ def log_contribution_menu():
 
     db.log_contribution(goal_id, amount, date)
 
+def view_contributions_menu():
+    """Allow users to view past contributions for a specific goal."""
+    display_goals()  # Show available goals
+
+    goal_id = Prompt.ask("[bold]Enter the ID of the goal to view contributions (or 0 to cancel):[/bold]").strip()
+    if goal_id == "0":
+        console.print("[yellow]Returning to main menu.[/yellow]")
+        return
+
+    # Ensure goal_id is valid
+    if not goal_id.isdigit():
+        console.print("[red]Invalid input. Please enter a valid goal ID.[/red]")
+        return
+    goal_id = int(goal_id)
+
+    contributions = db.fetch_contributions(goal_id)
+
+    if not contributions:
+        console.print("[yellow]No contributions found for this goal.[/yellow]")
+        return
+
+    table = Table(title=f"Contribution History for Goal ID {goal_id}")
+    table.add_column("ID", style="bold yellow")
+    table.add_column("Amount (INR)", justify="right", style="green")
+    table.add_column("Date", justify="center", style="bold cyan")
+
+    for entry in contributions:
+        table.add_row(str(entry[0]), f"{entry[1]:,.2f}", entry[2])
+
+    console.print(table)
+
 def main_menu():
     """Display CLI menu with Rich UI."""
     while True:
@@ -308,19 +339,20 @@ def main_menu():
         table.add_row("4", "Edit Goal")  # New option
         table.add_row("5", "Delete Goal")
         table.add_row("6", "Log Contribution")
-        table.add_row("7", "Exit")
+        table.add_row("7", "View Contributions")
+        table.add_row("8", "Exit")
 
         console.print(table)
 
         while True:
-            choice = Prompt.ask("[bold]Choose an option (1-7)[/bold]")
+            choice = Prompt.ask("[bold]Choose an option (1-8)[/bold]")
             try:
                 choice = int(choice)  # Convert input manually
-                if choice in [1, 2, 3, 4, 5, 6, 7]:
+                if choice in [1, 2, 3, 4, 5, 6, 7, 8]:
                     break
-                console.print("[red]Invalid choice. Please select a valid option (1-7).[/red]")
+                console.print("[red]Invalid choice. Please select a valid option (1-8).[/red]")
             except ValueError:
-                console.print("[red]Invalid input. Please enter a number (1-7).[/red]")
+                console.print("[red]Invalid input. Please enter a number (1-8).[/red]")
 
         if choice == 1:
             goal_data = get_user_input()
@@ -341,10 +373,14 @@ def main_menu():
 
         elif choice == 6:
             log_contribution_menu()
-            
+
         elif choice == 7:
+            view_contributions_menu()
+            
+        elif choice == 8:
             console.print("[bold red]Exiting program.[/bold red]")
             break
+
 if __name__ == "__main__":
     db.initialize_db()  # Ensure DB is set up
     main_menu()
