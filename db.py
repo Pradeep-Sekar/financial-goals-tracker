@@ -198,3 +198,17 @@ def get_goal_total_contributions(goal_id):
 
     conn.close()
     return total_contributions
+
+def fetch_contributions(goal_id):
+    """Retrieve all contributions for a given goal, sorted by date (latest first)."""
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, amount, date FROM contributions
+        WHERE goal_id = ? ORDER BY date DESC
+    """, (goal_id,))
+
+    contributions = cursor.fetchall()
+    conn.close()
+    return contributions
