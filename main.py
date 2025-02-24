@@ -388,7 +388,7 @@ def plot_goal_progress(goal_id, goal_name, target_amount):
     plt.show()
 
 def view_progress_graph_menu():
-    """Allow users to view a progress graph for a selected goal."""
+    """Allow users to view a progress graph and milestone tracking."""
     display_goals()  # Show available goals
 
     goal_id = Prompt.ask("[bold]Enter the ID of the goal to view progress (or 0 to cancel):[/bold]").strip()
@@ -401,13 +401,40 @@ def view_progress_graph_menu():
         return
     goal_id = int(goal_id)
 
-    goal_data = db.fetch_goal_by_id(goal_id)  # Fetch goal details
+    goal_data = db.fetch_goal_by_id(goal_id)
     if not goal_data:
         console.print("[red]Goal not found.[/red]")
         return
 
     goal_name, target_amount = goal_data[1], goal_data[2]
+
+    # Show progress graph first
     plot_goal_progress(goal_id, goal_name, target_amount)
+
+    # Then show milestone tracking
+    calculate_milestones(goal_id, target_amount)
+
+def calculate_milestones(goal_id, target_amount):
+    """Check milestone progress for a goal."""
+    total_contributions = db.get_goal_total_contributions(goal_id)
+    
+    milestones = {
+        "25%": target_amount * 0.25,
+        "50%": target_amount * 0.50,
+        "75%": target_amount * 0.75,
+        "100% (Goal Achieved!)": target_amount
+    }
+
+    table = Table(title=f"Milestone Progress for Goal ID {goal_id}")
+    table.add_column("Milestone", style="bold yellow")
+    table.add_column("Target Amount (INR)", justify="right", style="cyan")
+    table.add_column("Status", justify="center", style="bold green")
+
+    for label, amount in milestones.items():
+        status = "✔ Reached" if total_contributions >= amount else "❌ Pending"
+        table.add_row(label, f"{amount:,.2f}", status)
+
+    console.print(table)
 
 def main_menu():
     """Display CLI menu with Rich UI."""
@@ -477,3 +504,4 @@ def main_menu():
 if __name__ == "__main__":
     db.initialize_db()  # Ensure DB is set up
     main_menu()
+
