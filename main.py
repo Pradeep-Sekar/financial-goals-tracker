@@ -25,11 +25,11 @@ def display_goals():
     table.add_column("Lumpsum (INR)", justify="right")
     table.add_column("SIP (INR)", justify="right")
     table.add_column("Start Date", justify="center")
-    table.add_column("Created At", justify="center")
-    table.add_column("Notes", style="italic")
     table.add_column("Total Contributions", justify="right", style="green")  # New Column
     table.add_column("Progress (%)", justify="right", style="magenta")  # New Column
-
+    table.add_column("Notes", style="italic")
+    table.add_column("Created At", justify="center")
+    
     for goal in goals:
         goal_id = goal[0]  # ID
         total_contributions = db.get_goal_total_contributions(goal_id)  # Fetch from DB
@@ -45,10 +45,11 @@ def display_goals():
             f"{goal[6]:,.2f}" if goal[6] else "-",  # Lumpsum Investment
             f"{goal[7]:,.2f}" if goal[7] else "-",  # SIP Amount
             goal[8] if goal[8] else "-",  # Start Date
-            goal[9] if goal[9] else "-",      # Created At
-            goal[10],   # Notes
             f"{total_contributions:,.2f}",  # Display Contributions
-            f"{progress:.2f}%"  # Display Progress
+            f"{progress:.2f}%",  # Display Progress
+            goal[10] if goal[9] else "-", # Notes
+            goal[9] 
+
         )
 
     console.print(table)
