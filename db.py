@@ -262,7 +262,8 @@ def fetch_goal_by_id(goal_id):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT id, goal_name, target_amount 
+        SELECT id, goal_name, target_amount, time_horizon, cagr, investment_mode, 
+               initial_investment, sip_amount, start_date
         FROM goals 
         WHERE id = ?
     """, (goal_id,))
@@ -270,3 +271,14 @@ def fetch_goal_by_id(goal_id):
     goal = cursor.fetchone()  # Fetch one goal
     conn.close()
     return goal  # Returns (id, goal_name, target_amount) or None if not found
+
+def get_goal_total_contributions(goal_id):
+    """Fetch total contributions for a specific goal."""
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT SUM(amount) FROM contributions WHERE goal_id = ?
+    """, (goal_id,))
+    total = cursor.fetchone()[0]
+    conn.close()
+    return total if total else 0  # Ensure it returns 0 if no contributions exist

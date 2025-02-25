@@ -385,7 +385,7 @@ def plot_goal_progress(goal_id, goal_name, target_amount):
 
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 def view_progress_graph_menu():
     """Allow users to view a progress graph and milestone tracking."""
@@ -406,13 +406,20 @@ def view_progress_graph_menu():
         console.print("[red]Goal not found.[/red]")
         return
 
-    goal_name, target_amount = goal_data[1], goal_data[2]
+    goal_name, target_amount, time_horizon, cagr = goal_data[1], goal_data[2], goal_data[3], goal_data[4]
 
     # Show progress graph first
     plot_goal_progress(goal_id, goal_name, target_amount)
 
     # Then show milestone tracking
+    console.print("\n[bold cyan]Milestone Progress:[/bold cyan]")
     calculate_milestones(goal_id, target_amount)
+
+    # Show future value projection
+    console.print("\n[bold cyan]Future Value Projection:[/bold cyan]")
+    calculate_future_value(goal_id, target_amount, time_horizon, cagr)
+
+    console.input("\nPress Enter to return to the main menu...")
 
 def calculate_milestones(goal_id, target_amount):
     """Check milestone progress for a goal."""
@@ -435,6 +442,61 @@ def calculate_milestones(goal_id, target_amount):
         table.add_row(label, f"{amount:,.2f}", status)
 
     console.print(table)
+
+def calculate_future_value(goal_id, target_amount, time_horizon, cagr):
+    """Calculate future value of current contributions and determine shortfall/surplus."""
+    total_contributions = db.get_goal_total_contributions(goal_id)
+    goal_data = db.fetch_goal_by_id(goal_id)
+
+    if not goal_data or len(goal_data) < 7:
+        console.print("[red]Error: Goal data is incomplete or missing.[/red]")
+        return
+
+    sip_amount = goal_data[7]  # Monthly SIP amount
+    cagr_decimal = cagr / 100
+
+    # Calculate FV of existing contributions
+    future_value_existing = total_contributions * ((1 + cagr_decimal) ** time_horizon)
+
+    # Calculate FV of future SIP contributions
+    fv_sip = sip_amount * ((((1 + cagr_decimal) ** time_horizon) - 1) / cagr_decimal) * (1 + cagr_decimal)
+
+    # Total future value = Existing investments + Ongoing SIP growth
+    total_future_value = future_value_existing + fv_sip
+
+    # Determine shortfall or surplus
+    shortfall = target_amount - total_future_value
+    status = "[green]✔ On Track[/green]" if total_future_value >= target_amount else "[red]❌ Shortfall[/red]"
+
+    # Calculate required SIP increase (if necessary)
+    required_sip = 0
+    if total_future_value < target_amount:
+        required_sip = (shortfall * cagr_decimal) / (((1 + cagr_decimal) ** time_horizon - 1) * (1 + cagr_decimal))
+
+    # Display results
+    table = Table(title=f"Future Value Projection for Goal ID {goal_id}")
+    table.add_column("Metric", style="bold yellow")
+    table.add_column("Value", justify="right", style="cyan")
+
+    table.add_row("Current Contributions (INR)", f"{total_contributions:,.2f}")
+    table.add_row("Ongoing SIP (INR)", f"{sip_amount:,.2f}")
+    table.add_row("Expected Future Value (INR)", f"{total_future_value:,.2f}")
+    table.add_row("Target Amount (INR)", f"{target_amount:,.2f}")
+    table.add_row("Status", status)
+
+    if total_future_value < target_amount:
+        table.add_row("Shortfall Amount (INR)", f"{shortfall:,.2f}")
+        table.add_row("Increase SIP to Stay on Track (INR)", f"{required_sip:,.2f}")
+
+    console.print(table)
+
+    # Display additional guidance
+    console.print("\n[bold cyan]Based on expected returns:[/bold cyan]")
+    if total_future_value >= target_amount:
+        console.print("[green]✔ You are on track! Keep your current SIP to meet your goal.[/green]")
+    else:
+        console.print(f"[red]❌ Your current SIP of ₹{sip_amount:,.2f} is not enough.[/red]")
+        console.print(f"[yellow]💡 Consider increasing it to ₹{required_sip:,.2f} to stay on track.[/yellow]")
 
 def main_menu():
     """Display CLI menu with Rich UI."""
