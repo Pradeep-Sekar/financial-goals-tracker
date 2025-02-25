@@ -448,30 +448,45 @@ def calculate_future_value(goal_id, target_amount, time_horizon, cagr):
     total_contributions = db.get_goal_total_contributions(goal_id)
     goal_data = db.fetch_goal_by_id(goal_id)
 
-    if not goal_data or len(goal_data) < 7:
+    if not goal_data or len(goal_data) < 8:
         console.print("[red]Error: Goal data is incomplete or missing.[/red]")
         return
 
     sip_amount = goal_data[7]  # Monthly SIP amount
     cagr_decimal = cagr / 100
 
-    # Calculate FV of existing contributions
+    # Debugging print statements
+    print(f"Debug: Goal ID {goal_id}, Total Contributions: {total_contributions}")
+    print(f"Debug: SIP Amount: {sip_amount}, Time Horizon: {time_horizon}, CAGR: {cagr_decimal}")
+
+    # Future Value of existing investments
     future_value_existing = total_contributions * ((1 + cagr_decimal) ** time_horizon)
+    print(f"Debug: FV of existing contributions: {future_value_existing}")
 
-    # Calculate FV of future SIP contributions
-    fv_sip = sip_amount * ((((1 + cagr_decimal) ** time_horizon) - 1) / cagr_decimal) * (1 + cagr_decimal)
+    # Future Value of SIP contributions
+    # Future Value of SIP contributions (corrected formula for monthly compounding)
+    if cagr_decimal > 0:
+        n = 12  # Monthly compounding
+        monthly_rate = cagr_decimal / n  # Convert annual CAGR to monthly
+        months = time_horizon * n  # Total number of months
+        fv_sip = sip_amount * (((1 + monthly_rate) ** months - 1) / monthly_rate) * (1 + monthly_rate)
+    else:
+        fv_sip = sip_amount * time_horizon * n  # If CAGR is 0, simple sum
 
-    # Total future value = Existing investments + Ongoing SIP growth
+    print(f"Debug: FV of SIP contributions: {fv_sip}")
+
+    # Total Future Value
     total_future_value = future_value_existing + fv_sip
-
-    # Determine shortfall or surplus
     shortfall = target_amount - total_future_value
-    status = "[green]✔ On Track[/green]" if total_future_value >= target_amount else "[red]❌ Shortfall[/red]"
 
-    # Calculate required SIP increase (if necessary)
+    print(f"Debug: Total Future Value: {total_future_value}, Shortfall: {shortfall}")
+
+    # Calculate required SIP increase if needed
     required_sip = 0
-    if total_future_value < target_amount:
+    if shortfall > 0 and cagr_decimal > 0:
         required_sip = (shortfall * cagr_decimal) / (((1 + cagr_decimal) ** time_horizon - 1) * (1 + cagr_decimal))
+
+    print(f"Debug: Required SIP to stay on track: {required_sip}")
 
     # Display results
     table = Table(title=f"Future Value Projection for Goal ID {goal_id}")
@@ -482,15 +497,15 @@ def calculate_future_value(goal_id, target_amount, time_horizon, cagr):
     table.add_row("Ongoing SIP (INR)", f"{sip_amount:,.2f}")
     table.add_row("Expected Future Value (INR)", f"{total_future_value:,.2f}")
     table.add_row("Target Amount (INR)", f"{target_amount:,.2f}")
-    table.add_row("Status", status)
+    table.add_row("Status", "[green]✔ On Track[/green]" if total_future_value >= target_amount else "[red]❌ Shortfall[/red]")
 
-    if total_future_value < target_amount:
+    if shortfall > 0:
         table.add_row("Shortfall Amount (INR)", f"{shortfall:,.2f}")
         table.add_row("Increase SIP to Stay on Track (INR)", f"{required_sip:,.2f}")
 
     console.print(table)
 
-    # Display additional guidance
+    # Guidance for the user
     console.print("\n[bold cyan]Based on expected returns:[/bold cyan]")
     if total_future_value >= target_amount:
         console.print("[green]✔ You are on track! Keep your current SIP to meet your goal.[/green]")
