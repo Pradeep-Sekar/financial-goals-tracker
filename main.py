@@ -7,6 +7,7 @@ import investment_recommendation
 import csv
 import matplotlib.pyplot as plt
 from datetime import datetime
+import os
 
 console = Console()
 
@@ -272,27 +273,43 @@ def edit_goal_menu():
         console.print("[yellow]Edit canceled.[/yellow]")
 
 def log_contribution_menu():
-    """Allow users to log contributions for a goal."""
+    """Menu for logging a new contribution to a goal."""
     display_goals()  # Show available goals
 
     goal_id = Prompt.ask("[bold]Enter the ID of the goal to contribute to (or 0 to cancel):[/bold]").strip()
     if goal_id == "0":
-        console.print("[yellow]Contribution canceled.[/yellow]")
+        console.print("[yellow]Returning to main menu.[/yellow]")
         return
 
-    # Ensure the goal_id is numeric
     if not goal_id.isdigit():
         console.print("[red]Invalid input. Please enter a valid goal ID.[/red]")
         return
     goal_id = int(goal_id)
 
-    amount = Prompt.ask("[bold]Enter contribution amount (INR):[/bold]").strip()
-    if not amount.replace(".", "").isdigit():
-        console.print("[red]Invalid amount. Please enter a valid number.[/red]")
+    if not db.goal_exists(goal_id):
+        console.print("[red]Goal not found.[/red]")
         return
-    amount = float(amount)
 
-    date = Prompt.ask("[bold]Enter contribution date (YYYY-MM-DD):[/bold]").strip()
+    while True:
+        try:
+            amount = float(Prompt.ask("[bold]Enter contribution amount (INR):[/bold]").strip())
+            if amount <= 0:
+                console.print("[red]Amount must be positive.[/red]")
+                continue
+            break
+        except ValueError:
+            console.print("[red]Invalid input. Please enter a valid number.[/red]")
+
+    date = Prompt.ask("[bold]Enter contribution date (YYYY-MM-DD, leave blank for today):[/bold]").strip()
+    if not date:
+        date = datetime.now().strftime("%Y-%m-%d")
+    
+    # Validate date format
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        console.print("[red]Invalid date format. Using today's date instead.[/red]")
+        date = datetime.now().strftime("%Y-%m-%d")
 
     db.log_contribution(goal_id, amount, date)
 
@@ -334,6 +351,23 @@ def export_to_csv():
 
     goals_filename = "goals_export.csv"
     contributions_filename = "contributions_export.csv"
+    
+    # Check if files already exist
+    files_exist = []
+    if os.path.exists(goals_filename):
+        files_exist.append(goals_filename)
+    if os.path.exists(contributions_filename):
+        files_exist.append(contributions_filename)
+        
+    if files_exist:
+        file_list = ", ".join(files_exist)
+        confirm = Prompt.ask(
+            f"[bold yellow]Warning: {file_list} already exist. Overwrite? (y/n)[/bold yellow]",
+            choices=["y", "n"], default="n"
+        )
+        if confirm.lower() != "y":
+            console.print("[yellow]Export cancelled.[/yellow]")
+            return
 
     # Export goals to CSV
     with open(goals_filename, mode="w", newline="", encoding="utf-8") as file:
@@ -361,31 +395,35 @@ def plot_goal_progress(goal_id, goal_name, target_amount):
         console.print("[yellow]No contributions recorded for this goal.[/yellow]")
         return
 
-    # Convert data into lists for plotting
-    dates = [datetime.strptime(entry[0], "%Y-%m-%d") for entry in contributions]
-    amounts = [entry[1] for entry in contributions]
+    try:
+        # Convert data into lists for plotting
+        dates = [datetime.strptime(entry[0], "%Y-%m-%d") for entry in contributions]
+        amounts = [entry[1] for entry in contributions]
 
-    # Generate cumulative sum for progress tracking
-    cumulative_contributions = [sum(amounts[:i+1]) for i in range(len(amounts))]
+        # Generate cumulative sum for progress tracking
+        cumulative_contributions = [sum(amounts[:i+1]) for i in range(len(amounts))]
 
-    # Expected progress line (assuming uniform contributions)
-    expected_dates = [dates[0], dates[-1]]
-    expected_amounts = [0, target_amount]
+        # Expected progress line (assuming uniform contributions)
+        expected_dates = [dates[0], dates[-1]]
+        expected_amounts = [0, target_amount]
 
-    # Plot the graph
-    plt.figure(figsize=(8, 5))
-    plt.plot(dates, cumulative_contributions, marker='o', linestyle='-', color='blue', label="Actual Contributions")
-    plt.plot(expected_dates, expected_amounts, linestyle="dashed", color="red", label="Expected Progress")
-    
-    plt.xlabel("Date")
-    plt.ylabel("Amount (INR)")
-    plt.title(f"Progress for {goal_name}")
-    plt.legend()
-    plt.grid(True)
+        # Plot the graph
+        plt.figure(figsize=(8, 5))
+        plt.plot(dates, cumulative_contributions, marker='o', linestyle='-', color='blue', label="Actual Contributions")
+        plt.plot(expected_dates, expected_amounts, linestyle="dashed", color="red", label="Expected Progress")
+        
+        plt.xlabel("Date")
+        plt.ylabel("Amount (INR)")
+        plt.title(f"Progress for {goal_name}")
+        plt.legend()
+        plt.grid(True)
 
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show(block=False)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show(block=False)
+    except Exception as e:
+        console.print(f"[red]Error generating graph: {str(e)}[/red]")
+        console.print("[yellow]Continuing with text-based progress report...[/yellow]")
 
 def view_progress_graph_menu():
     """Allow users to view a progress graph and milestone tracking."""
@@ -454,39 +492,33 @@ def calculate_future_value(goal_id, target_amount, time_horizon, cagr):
 
     sip_amount = goal_data[7]  # Monthly SIP amount
     cagr_decimal = cagr / 100
-
-    # Debugging print statements
-    print(f"Debug: Goal ID {goal_id}, Total Contributions: {total_contributions}")
-    print(f"Debug: SIP Amount: {sip_amount}, Time Horizon: {time_horizon}, CAGR: {cagr_decimal}")
+    n = 12  # Monthly compounding - moved outside the if block
 
     # Future Value of existing investments
     future_value_existing = total_contributions * ((1 + cagr_decimal) ** time_horizon)
-    print(f"Debug: FV of existing contributions: {future_value_existing}")
 
-    # Future Value of SIP contributions
     # Future Value of SIP contributions (corrected formula for monthly compounding)
     if cagr_decimal > 0:
-        n = 12  # Monthly compounding
         monthly_rate = cagr_decimal / n  # Convert annual CAGR to monthly
         months = time_horizon * n  # Total number of months
         fv_sip = sip_amount * (((1 + monthly_rate) ** months - 1) / monthly_rate) * (1 + monthly_rate)
     else:
         fv_sip = sip_amount * time_horizon * n  # If CAGR is 0, simple sum
 
-    print(f"Debug: FV of SIP contributions: {fv_sip}")
-
     # Total Future Value
     total_future_value = future_value_existing + fv_sip
     shortfall = target_amount - total_future_value
 
-    print(f"Debug: Total Future Value: {total_future_value}, Shortfall: {shortfall}")
-
     # Calculate required SIP increase if needed
     required_sip = 0
-    if shortfall > 0 and cagr_decimal > 0:
-        required_sip = (shortfall * cagr_decimal) / (((1 + cagr_decimal) ** time_horizon - 1) * (1 + cagr_decimal))
-
-    print(f"Debug: Required SIP to stay on track: {required_sip}")
+    if shortfall > 0:
+        if cagr_decimal > 0:
+            monthly_rate = cagr_decimal / n
+            months = time_horizon * n
+            required_sip = shortfall * monthly_rate / (((1 + monthly_rate) ** months - 1) * (1 + monthly_rate))
+        else:
+            # If CAGR is 0, simple division
+            required_sip = shortfall / (time_horizon * n)
 
     # Display results
     table = Table(title=f"Future Value Projection for Goal ID {goal_id}")
