@@ -70,9 +70,34 @@ def get_numeric_input(prompt_text, default=0, input_type=int):
 def get_user_input():
     """Prompt user for goal details and return as a dictionary."""
     goal_name = console.input("[bold]Enter goal name:[/bold] ")
-    target_amount = Prompt.ask("[bold]Enter target amount (INR):[/bold] ", default=0, convert=int)
-    time_horizon = Prompt.ask("[bold]Enter time horizon (years):[/bold] ", default=0, convert=int)
-    cagr = Prompt.ask("[bold]Enter expected CAGR (%):[/bold] ", default=0.0, convert=float)
+    
+    # Handle numeric inputs with validation
+    while True:
+        try:
+            target_amount = int(Prompt.ask("[bold]Enter target amount (INR):[/bold] ", default="0"))
+            if target_amount < 0:
+                console.print("[red]Amount cannot be negative.[/red]")
+                continue
+            break
+        except ValueError:
+            console.print("[red]Please enter a valid number.[/red]")
+
+    while True:
+        try:
+            time_horizon = int(Prompt.ask("[bold]Enter time horizon (years):[/bold] ", default="0"))
+            if time_horizon < 0:
+                console.print("[red]Time horizon cannot be negative.[/red]")
+                continue
+            break
+        except ValueError:
+            console.print("[red]Please enter a valid number.[/red]")
+
+    while True:
+        try:
+            cagr = float(Prompt.ask("[bold]Enter expected CAGR (%):[/bold] ", default="12.0"))
+            break
+        except ValueError:
+            console.print("[red]Please enter a valid number.[/red]")
 
     # Investment Mode Selection
     console.print("\n[bold cyan]Select Investment Mode:[/bold cyan]")
@@ -81,27 +106,71 @@ def get_user_input():
     console.print("[bold yellow]3[/bold yellow]: SIP + Lumpsum")
 
     while True:
-        mode_choice = Prompt.ask("[bold]Choose an option (1-3):[/bold] ")
+        mode_choice = int(Prompt.ask("[bold]Choose an option (1-3):[/bold] ", default="1"))
         if mode_choice in [1, 2, 3]:
             investment_modes = {1: "SIP", 2: "Lumpsum", 3: "SIP + Lumpsum"}
             investment_mode = investment_modes[mode_choice]
             break
         console.print("[red]Invalid choice. Please select 1, 2, or 3.[/red]")
 
-    # Ask for investment amounts based on mode
+    # Initialize variables
     initial_investment = 0
     sip_amount = 0
 
-    if investment_mode in ["Lumpsum", "SIP + Lumpsum"]:
-        initial_investment = Prompt.ask("[bold]Enter lumpsum amount (INR) (if applicable):[/bold] ", default=0, convert=int)
+    if investment_mode == "Lumpsum":
+        while True:
+            try:
+                initial_investment = int(Prompt.ask("[bold]Enter lumpsum amount (INR):[/bold] ", default="0"))
+                if initial_investment < 0:
+                    console.print("[red]Amount cannot be negative.[/red]")
+                    continue
+                break
+            except ValueError:
+                console.print("[red]Please enter a valid number.[/red]")
+    
+    elif investment_mode == "SIP":
+        sip_amount = goals_calculator.calculate_sip(target_amount, time_horizon, cagr)
+        console.print(f"\n[bold green]Required monthly SIP: ₹{sip_amount:,.2f}[/bold green]")
+    
+    elif investment_mode == "SIP + Lumpsum":
+        console.print("\n[bold cyan]Choose how to allocate your Lumpsum investment:[/bold cyan]")
+        console.print("[bold yellow]1[/bold yellow]: Enter a percentage of the target amount")
+        console.print("[bold yellow]2[/bold yellow]: Enter a fixed lumpsum amount")
 
-    if investment_mode in ["SIP", "SIP + Lumpsum"]:
-        sip_amount = Prompt.ask("[bold]Enter SIP amount (INR) (if applicable):[/bold] ", default=0, convert=int)
+        while True:
+            lumpsum_option = get_numeric_input("Choose an option (1-2):", default=1)
+            if lumpsum_option in [1, 2]:
+                break
+            console.print("[red]Invalid choice. Please select 1 or 2.[/red]")
+
+        if lumpsum_option == 1:
+            lumpsum_percentage = get_numeric_input("Enter percentage of target to invest as Lumpsum:", default=50, input_type=float)
+            initial_investment, sip_amount = goals_calculator.calculate_mixed(
+                target_amount, time_horizon, cagr, lumpsum_percentage=lumpsum_percentage
+            )
+        else:
+            lumpsum_amount = get_numeric_input("Enter the fixed Lumpsum amount (INR):", default=0, input_type=float)
+            initial_investment, sip_amount = goals_calculator.calculate_mixed(
+                target_amount, time_horizon, cagr, lumpsum_amount=lumpsum_amount
+            )
+        
+        console.print(f"\n[bold green]Required investments:[/bold green]")
+        console.print(f"[green]Lumpsum: ₹{initial_investment:,.2f}[/green]")
+        console.print(f"[green]Monthly SIP: ₹{sip_amount:,.2f}[/green]")
 
     # Start Date Input
-    start_date = console.input("[bold]Enter start date (YYYY-MM-DD):[/bold] ") or None
+    start_date = Prompt.ask("[bold]Enter start date (YYYY-MM-DD, leave blank for today):[/bold] ").strip()
+    if not start_date:
+        start_date = datetime.now().strftime("%Y-%m-%d")
+    
+    # Validate date format
+    try:
+        datetime.strptime(start_date, "%Y-%m-%d")
+    except ValueError:
+        console.print("[red]Invalid date format. Using today's date instead.[/red]")
+        start_date = datetime.now().strftime("%Y-%m-%d")
 
-    notes = console.input("[bold]Enter notes (optional, press Enter to skip):[/bold] ") or None
+    notes = Prompt.ask("[bold]Enter notes (optional):[/bold] ", default="")
 
     return {
         "goal_name": goal_name,
@@ -112,7 +181,7 @@ def get_user_input():
         "initial_investment": initial_investment,
         "sip_amount": sip_amount,
         "start_date": start_date,
-        "notes": notes  # Now included in the return dictionary
+        "notes": notes
     }
 
 def goal_calculator_menu():

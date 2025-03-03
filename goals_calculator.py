@@ -22,13 +22,15 @@ def calculate_sip(target_amount, time_horizon, cagr):
 def calculate_mixed(target_amount, time_horizon, cagr, lumpsum_percentage=None, lumpsum_amount=None):
     """Calculate a mix of Lumpsum + SIP based on either a percentage or fixed amount."""
     
-    print(f"\nDEBUG: target_amount={target_amount}, time_horizon={time_horizon}, cagr={cagr}, "
-          f"lumpsum_percentage={lumpsum_percentage}, lumpsum_amount={lumpsum_amount}\n")  # Debug print
+    #print(f"\nDEBUG: target_amount={target_amount}, time_horizon={time_horizon}, cagr={cagr}, "
+          #f"lumpsum_percentage={lumpsum_percentage}, lumpsum_amount={lumpsum_amount}\n")  # Debug print
     
     if lumpsum_amount is not None:  # User entered a fixed lumpsum
         initial_lumpsum = lumpsum_amount
+        lumpsum_investment = lumpsum_amount  # Use the exact amount specified by user
     elif lumpsum_percentage is not None:  # User entered a percentage
         initial_lumpsum = target_amount * (lumpsum_percentage / 100)
+        lumpsum_investment = calculate_lumpsum(initial_lumpsum, time_horizon, cagr)
     else:
         raise ValueError("Either lumpsum_percentage or lumpsum_amount must be provided.")
 
@@ -36,12 +38,11 @@ def calculate_mixed(target_amount, time_horizon, cagr, lumpsum_percentage=None, 
     initial_lumpsum = min(initial_lumpsum, target_amount)
     remaining_target = target_amount - initial_lumpsum
 
-    print(f"\nDEBUG: initial_lumpsum={initial_lumpsum}, remaining_target={remaining_target}\n")  # Debug print
+   # print(f"\nDEBUG: initial_lumpsum={initial_lumpsum}, remaining_target={remaining_target}\n")  # Debug print
 
-    # Calculate investments
-    lumpsum_investment = calculate_lumpsum(initial_lumpsum, time_horizon, cagr)
+    # Calculate SIP for remaining amount
     sip_investment = calculate_sip(remaining_target, time_horizon, cagr)
 
-    print(f"\nDEBUG: lumpsum_investment={lumpsum_investment}, sip_investment={sip_investment}\n")  # Debug print
+    #print(f"\nDEBUG: lumpsum_investment={lumpsum_investment}, sip_investment={sip_investment}\n")  # Debug print
 
     return round(lumpsum_investment, 2), round(sip_investment, 2)
