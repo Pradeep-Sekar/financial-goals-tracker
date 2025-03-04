@@ -10,3 +10,4 @@ wheels/
 .venv
 .aider*
 .env
+financial_goals.db
