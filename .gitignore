@@ -11,3 +11,5 @@ wheels/
 .aider*
 .env
 financial_goals.db
+financial_goals.db
+data/*.db
