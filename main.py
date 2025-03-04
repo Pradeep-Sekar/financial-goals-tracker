@@ -276,8 +276,8 @@ def delete_goal_menu():
         console.print("[red]Error: No goal found with this ID.[/red]")
         return
 
-    confirm = console.input("[bold red]Are you sure you want to delete this goal? (yes/no):[/bold red] ").strip().lower()
-    if confirm == "yes":
+    confirm = console.input("[bold red]Are you sure you want to delete this goal? (y)es/(n)o):[/bold red] ").strip().lower()
+    if confirm == "y":
         db.delete_goal(goal_id)
         console.print("[green]Goal deleted successfully![/green]")
     else:
@@ -614,69 +614,132 @@ def calculate_future_value(goal_id, target_amount, time_horizon, cagr):
         console.print(f"[red]❌ Your current SIP of ₹{sip_amount:,.2f} is not enough.[/red]")
         console.print(f"[yellow]💡 Consider increasing it to ₹{required_sip:,.2f} to stay on track.[/yellow]")
 
+def handle_basics_menu():
+    """Handle The Basics menu options."""
+    while True:
+        console.print("\n[bold cyan]=== Financial Basics ===[/bold cyan]")
+        
+        table = Table(show_header=False)
+        table.add_column(style="bold yellow")
+        table.add_column()
+        
+        table.add_row("1", "Update Emergency Fund")
+        table.add_row("2", "Update Health Insurance")
+        table.add_row("3", "Update Term Insurance")
+        table.add_row("4", "View Basics Status")
+        table.add_row("5", "Back to Main Menu")
+        
+        console.print(table)
+        
+        choice = Prompt.ask("\n[bold]Choose an option[/bold]", choices=["1", "2", "3", "4", "5"])
+        
+        if choice == "1":
+            monthly_expenses = get_numeric_input("Enter your monthly expenses (INR):", input_type=float)
+            current_amount = get_numeric_input("Enter current emergency fund amount (INR):", input_type=float)
+            db.update_basic_amount('emergency_fund', current_amount, monthly_expenses=monthly_expenses)
+            display_basics_status()
+            
+        elif choice == "2":
+            family_members = get_numeric_input("Enter number of family members:", input_type=int)
+            current_amount = get_numeric_input("Enter current health insurance cover (INR):", input_type=float)
+            db.update_basic_amount('health_insurance', current_amount, family_members=family_members)
+            display_basics_status()
+            
+        elif choice == "3":
+            annual_income = get_numeric_input("Enter your annual income (INR):", input_type=float)
+            current_amount = get_numeric_input("Enter current term insurance cover (INR):", input_type=float)
+            db.update_basic_amount('term_insurance', current_amount, annual_income=annual_income)
+            display_basics_status()
+            
+        elif choice == "4":
+            display_basics_status()
+            
+        elif choice == "5":
+            break
+
+def display_basics_status():
+    """Display status of all financial basics."""
+    basics = db.get_basics_status()
+    
+    table = Table(title="Financial Basics Status")
+    table.add_column("Category", style="bold cyan")
+    table.add_column("Target Amount", justify="right", style="green")
+    table.add_column("Current Amount", justify="right", style="yellow")
+    table.add_column("Status", justify="center")
+    table.add_column("Recommendation", style="italic")
+    
+    for basic in basics:
+        category, target, current, is_funded, recommendation, _ = basic
+        status = "[green]✓ Funded[/green]" if is_funded else "[red]× Pending[/red]"
+        category_name = category.replace('_', ' ').title()
+        
+        table.add_row(
+            category_name,
+            f"₹{target:,.2f}",
+            f"₹{current:,.2f}",
+            status,
+            recommendation
+        )
+    
+    console.print(table)
+    
+    # Show overall progress
+    funded_count = sum(1 for basic in basics if basic[2])
+    total_count = len(basics)
+    progress = (funded_count / total_count) * 100
+    
+    console.print(f"\n[bold]Overall Progress: {progress:.1f}%[/bold]")
+    console.print(f"[italic]{funded_count} out of {total_count} basics funded[/italic]")
+
 def main_menu():
     """Display CLI menu with Rich UI."""
     while True:
         console.print("\n[bold cyan]=== Financial Goals Tracker ===[/bold cyan]\n")
-
+        
         table = Table(show_header=False)
-        table.add_column("Option", justify="center", style="bold yellow", no_wrap=True)
-        table.add_column("Description", style="bold")
-
-        table.add_row("1", "Add Goal")
-        table.add_row("2", "View Goals")
-        table.add_row("3", "Goal Calculator")
-        table.add_row("4", "Edit Goal")  # New option
-        table.add_row("5", "Delete Goal")
-        table.add_row("6", "Log Contribution")
-        table.add_row("7", "View Contributions")
-        table.add_row("8", "Export to CSV")
-        table.add_row("9", "View Progress Graph") 
-        table.add_row("10", "Exit")
-
+        table.add_column(style="bold yellow")
+        table.add_column()
+        
+        table.add_row("1", "The Basics")          # New option
+        table.add_row("2", "Add Goal")            # Moved down
+        table.add_row("3", "View Goals")          # Moved down
+        table.add_row("4", "Goal Calculator")     # Moved down
+        table.add_row("5", "Edit Goal")           # Moved down
+        table.add_row("6", "Delete Goal")         # Moved down
+        table.add_row("7", "Log Contribution")    # Moved down
+        table.add_row("8", "View Contributions")  # Restored
+        table.add_row("9", "Export to CSV")       # Restored
+        table.add_row("10", "View Progress Graph") # Restored
+        table.add_row("11", "Exit")               # Moved down
+        
         console.print(table)
-
-        while True:
-            choice = Prompt.ask("[bold]Choose an option (1-10)[/bold]")
-            try:
-                choice = int(choice)  # Convert input manually
-                if choice in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
-                    break
-                console.print("[red]Invalid choice. Please select a valid option (1-10).[/red]")
-            except ValueError:
-                console.print("[red]Invalid input. Please enter a number (1-10).[/red]")
-
-        if choice == 1:
+        
+        choice = Prompt.ask("\n[bold]Choose an option[/bold]", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"])
+        
+        if choice == "1":
+            handle_basics_menu()
+        elif choice == "2":
             goal_data = get_user_input()
             db.insert_goal(goal_data)
             console.print("\n[green]Goal added successfully![/green]\n")
-
-        elif choice == 2:
+        elif choice == "3":
             display_goals()
-
-        elif choice == 3:
+        elif choice == "4":
             goal_calculator_menu()
-
-        elif choice == 4:
+        elif choice == "5":
             edit_goal_menu()
-
-        elif choice == 5:
-             delete_goal_menu()
-
-        elif choice == 6:
+        elif choice == "6":
+            delete_goal_menu()
+        elif choice == "7":
             log_contribution_menu()
-
-        elif choice == 7:
+        elif choice == "8":
             view_contributions_menu()
-
-        elif choice == 8:
+        elif choice == "9":
             export_to_csv()
-
-        elif choice == 9:
+        elif choice == "10":
             view_progress_graph_menu()
-            
-        elif choice == 10:
-            console.print("[bold red]Exiting program.[/bold red]")
+        elif choice == "11":
+            console.print("[yellow]Goodbye![/yellow]")
             break
 
 if __name__ == "__main__":

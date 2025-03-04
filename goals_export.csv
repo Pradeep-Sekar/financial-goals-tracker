@@ -1,5 +1,4 @@
 ID,Goal Name,Target Amount,Time Horizon,CAGR (%),Investment Mode,Lumpsum (INR),SIP (INR),Start Date,Created At,Notes,Total Contributions
-4,Buy a house,12000000.0,7,12.0,SIP + Lumpsum,1000000.0,110000.0,2025-02-21,2025-02-21 06:12:55,Next SIP of 110000 in March,1110000.0
+4,Buy a house,12000000.0,7,12.0,SIP + Lumpsum,1000000.0,110000.0,2025-02-21,2025-02-21 06:12:55,Next SIP of 110000 in March,1220000.0
 5,Home Renovation,1000000.0,1,14.0,SIP,0.0,80000.0,2025-02-21,2025-02-21 06:13:54,SIP,80000.0
 6,Buy a car,1200000.0,1,12.0,SIP + Lumpsum,1000000.0,30000.0,2025-02-21,2025-02-21 06:14:30,Car,1000000.0
-7,test,100000.0,1,12.0,SIP,0.0,60000.0,2025-03-02,2025-03-02 13:27:21,test,0.0

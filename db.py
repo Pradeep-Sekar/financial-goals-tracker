@@ -52,6 +52,33 @@ def initialize_db():
         )
     """)
 
+    # Create basics table with recommendations
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS financial_basics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT CHECK(category IN ('emergency_fund', 'health_insurance', 'term_insurance')) NOT NULL,
+            target_amount REAL NOT NULL,
+            current_amount REAL DEFAULT 0,
+            is_funded BOOLEAN DEFAULT 0,
+            recommendation_formula TEXT NOT NULL,
+            recommendation_description TEXT NOT NULL,
+            last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Insert default recommendations if they don't exist
+    cursor.execute("SELECT COUNT(*) FROM financial_basics")
+    if cursor.fetchone()[0] == 0:
+        default_basics = [
+            ('emergency_fund', 0, 0, 0, '6 * monthly_expenses', 'Recommended: 6 months of monthly expenses'),
+            ('health_insurance', 0, 0, 0, 'max(500000, family_members * 200000)', 'Recommended: ₹5L or ₹2L per family member'),
+            ('term_insurance', 0, 0, 0, 'max(10000000, annual_income * 10)', 'Recommended: ₹1Cr or 10x annual income')
+        ]
+        cursor.executemany("""
+            INSERT INTO financial_basics (category, target_amount, current_amount, is_funded, recommendation_formula, recommendation_description)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, default_basics)
+
     conn.commit()
     conn.close()
 
@@ -282,3 +309,45 @@ def get_goal_total_contributions(goal_id):
     total = cursor.fetchone()[0]
     conn.close()
     return total if total else 0  # Ensure it returns 0 if no contributions exist
+
+def update_basic_amount(category, amount, monthly_expenses=None, family_members=None, annual_income=None):
+    """Update amount and calculate if basic is funded."""
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    # Calculate recommended amount based on category
+    if category == 'emergency_fund' and monthly_expenses:
+        recommended = monthly_expenses * 6
+    elif category == 'health_insurance' and family_members:
+        recommended = max(500000, family_members * 200000)
+    elif category == 'term_insurance' and annual_income:
+        recommended = max(10000000, annual_income * 10)
+    else:
+        recommended = 0
+
+    cursor.execute("""
+        UPDATE financial_basics 
+        SET current_amount = ?, 
+            target_amount = ?,
+            is_funded = ?,
+            last_updated = CURRENT_TIMESTAMP
+        WHERE category = ?
+    """, (amount, recommended, amount >= recommended, category))
+    
+    conn.commit()
+    conn.close()
+
+def get_basics_status():
+    """Fetch status of all financial basics."""
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT category, target_amount, current_amount, is_funded, 
+               recommendation_description, last_updated
+        FROM financial_basics
+    """)
+    
+    result = cursor.fetchall()
+    conn.close()
+    return result
