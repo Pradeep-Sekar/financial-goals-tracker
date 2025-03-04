@@ -13,3 +13,5 @@ wheels/
 financial_goals.db
 financial_goals.db
 data/*.db
+financial_goals.db
+*.db
