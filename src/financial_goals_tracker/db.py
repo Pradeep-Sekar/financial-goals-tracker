@@ -48,6 +48,8 @@ def initialize_db():
             goal_id INTEGER NOT NULL,
             amount REAL NOT NULL,
             date TEXT NOT NULL,
+            fund_name TEXT,
+            nav REAL,
             FOREIGN KEY(goal_id) REFERENCES goals(id) ON DELETE CASCADE
         )
     """)
@@ -78,6 +80,9 @@ def initialize_db():
             INSERT INTO financial_basics (category, target_amount, current_amount, is_funded, recommendation_formula, recommendation_description)
             VALUES (?, ?, ?, ?, ?, ?)
         """, default_basics)
+
+    # Create table for tracking historical changes to basics
+    create_basics_history_table()
 
     conn.commit()
     conn.close()
@@ -115,24 +120,12 @@ def fetch_goals():
         SELECT id, goal_name, target_amount, time_horizon, cagr, investment_mode,
                initial_investment, sip_amount, start_date, created_at, notes, contributions_total
         FROM goals
-    """)
-
-    goals = cursor.fetchall()
-    conn.close()
-    return goals
-
-    cursor.execute("""
-        SELECT id, goal_name, target_amount, time_horizon, cagr, investment_mode, initial_investment, sip_amount, start_date, created_at, contributions_total, notes
-        FROM goals
         ORDER BY created_at DESC
     """)
 
     goals = cursor.fetchall()
     conn.close()
-    return goals  # Returns a list of tuples
-
-    conn.commit()
-    conn.close()
+    return goals
 
 def delete_goal(goal_id):
     """Delete a goal from the database by its ID."""
@@ -173,27 +166,38 @@ def update_goal(goal_id, field, new_value):
     conn.commit()
     conn.close()
 
-def log_contribution(goal_id, amount, date):
+def log_contribution(goal_id, amount, date, fund_name=None, nav=None):
     """Log a new contribution and update the total contributions in the goals table."""
     conn = connect_db()
     cursor = conn.cursor()
 
-    # Insert the contribution into the contributions table
-    cursor.execute("""
-        INSERT INTO contributions (goal_id, amount, date)
-        VALUES (?, ?, ?)
-    """, (goal_id, amount, date))
+    try:
+        # Insert the contribution into the contributions table
+        if fund_name and nav:
+            cursor.execute("""
+                INSERT INTO contributions (goal_id, amount, date, fund_name, nav)
+                VALUES (?, ?, ?, ?, ?)
+            """, (goal_id, amount, date, fund_name, nav))
+        else:
+            cursor.execute("""
+                INSERT INTO contributions (goal_id, amount, date)
+                VALUES (?, ?, ?)
+            """, (goal_id, amount, date))
 
-    # Update the total contributions in the goals table
-    cursor.execute("""
-        UPDATE goals
-        SET contributions_total = contributions_total + ?
-        WHERE id = ?
-    """, (amount, goal_id))
+        # Update the total contributions in the goals table
+        cursor.execute("""
+            UPDATE goals
+            SET contributions_total = contributions_total + ?
+            WHERE id = ?
+        """, (amount, goal_id))
 
-    conn.commit()
-    conn.close()
-    console.print("[green]Contribution logged successfully![/green]")
+        conn.commit()
+        console.print("[green]Contribution logged successfully![/green]")
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
 
 def get_goal_progress(goal_id):
     """Retrieve total contributions and calculate progress percentage."""
@@ -217,15 +221,12 @@ def get_goal_total_contributions(goal_id):
     """Fetch total contributions for a specific goal."""
     conn = connect_db()
     cursor = conn.cursor()
-
     cursor.execute("""
-        SELECT COALESCE(SUM(amount), 0) FROM contributions WHERE goal_id = ?
+        SELECT contributions_total FROM goals WHERE id = ?
     """, (goal_id,))
-    
-    total_contributions = cursor.fetchone()[0]  # Get the sum or 0 if no contributions
-
+    total = cursor.fetchone()[0]
     conn.close()
-    return total_contributions
+    return total if total else 0
 
 def fetch_contributions(goal_id):
     """Retrieve all contributions for a given goal, sorted by date (latest first)."""
@@ -325,6 +326,13 @@ def update_basic_amount(category, amount, monthly_expenses=None, family_members=
     else:
         recommended = 0
 
+    # Fetch the current amount before updating
+    cursor.execute("""
+        SELECT current_amount FROM financial_basics WHERE category = ?
+    """, (category,))
+    current_amount = cursor.fetchone()[0] if cursor.fetchone() else 0
+
+    # Update the basic
     cursor.execute("""
         UPDATE financial_basics 
         SET current_amount = ?, 
@@ -333,7 +341,10 @@ def update_basic_amount(category, amount, monthly_expenses=None, family_members=
             last_updated = CURRENT_TIMESTAMP
         WHERE category = ?
     """, (amount, recommended, amount >= recommended, category))
-    
+
+    # Log the change
+    log_basics_change(category, current_amount, amount, f"Updated {category} amount")
+
     conn.commit()
     conn.close()
 
@@ -351,3 +362,236 @@ def get_basics_status():
     result = cursor.fetchall()
     conn.close()
     return result
+
+def fetch_basics():
+    """Retrieve all financial basics from the database."""
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT 
+            category,
+            target_amount,
+            current_amount,
+            is_funded,
+            recommendation_description,
+            last_updated
+        FROM financial_basics
+        ORDER BY id
+    """)
+
+    basics = cursor.fetchall()
+    conn.close()
+    return basics
+
+def export_all_data(export_dir="backups"):
+    """Export all data from database to CSV files with timestamp."""
+    # Create timestamp for unique backup folders
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_dir = os.path.join(export_dir, timestamp)
+    
+    if not os.path.exists(backup_dir):
+        os.makedirs(backup_dir)
+        
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    try:
+        # Export goals
+        cursor.execute("SELECT * FROM goals")
+        goals = cursor.fetchall()
+        with open(f"{backup_dir}/goals.csv", 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([description[0] for description in cursor.description])
+            writer.writerows(goals)
+        
+        # Export contributions
+        cursor.execute("SELECT * FROM contributions")
+        contributions = cursor.fetchall()
+        with open(f"{backup_dir}/contributions.csv", 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([description[0] for description in cursor.description])
+            writer.writerows(contributions)
+            
+        # Export financial basics
+        cursor.execute("SELECT * FROM financial_basics")
+        basics = cursor.fetchall()
+        with open(f"{backup_dir}/financial_basics.csv", 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([description[0] for description in cursor.description])
+            writer.writerows(basics)
+        
+        return backup_dir
+    
+    finally:
+        conn.close()
+
+def import_all_data(backup_dir):
+    """Import all data from CSV files into database."""
+    if not os.path.exists(backup_dir):
+        raise FileNotFoundError(f"Backup directory not found: {backup_dir}")
+    
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    try:
+        # Clear existing data
+        cursor.execute("DELETE FROM contributions")
+        cursor.execute("DELETE FROM goals")
+        cursor.execute("DELETE FROM financial_basics")
+        
+        # Import goals
+        goals_file = os.path.join(backup_dir, "goals.csv")
+        if os.path.exists(goals_file):
+            with open(goals_file, 'r') as f:
+                reader = csv.reader(f)
+                headers = next(reader)  # Skip headers
+                for row in reader:
+                    cursor.execute("""
+                        INSERT INTO goals 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, row)
+        
+        # Import contributions
+        contributions_file = os.path.join(backup_dir, "contributions.csv")
+        if os.path.exists(contributions_file):
+            with open(contributions_file, 'r') as f:
+                reader = csv.reader(f)
+                headers = next(reader)  # Skip headers
+                for row in reader:
+                    cursor.execute("""
+                        INSERT INTO contributions 
+                        VALUES (?, ?, ?, ?)
+                    """, row)
+        
+        # Import financial basics
+        basics_file = os.path.join(backup_dir, "financial_basics.csv")
+        if os.path.exists(basics_file):
+            with open(basics_file, 'r') as f:
+                reader = csv.reader(f)
+                headers = next(reader)  # Skip headers
+                for row in reader:
+                    cursor.execute("""
+                        INSERT INTO financial_basics 
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, row)
+        
+        conn.commit()
+        
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+def list_backups(backup_dir="backups"):
+    """List all available backups."""
+    if not os.path.exists(backup_dir):
+        return []
+    
+    backups = []
+    for d in os.listdir(backup_dir):
+        backup_path = os.path.join(backup_dir, d)
+        if os.path.isdir(backup_path):
+            backups.append(d)
+    
+    return sorted(backups, reverse=True)  # Most recent first
+
+def update_basic(category, target_amount, current_amount, notes, additional_info=None):
+    """Update a financial basic with new values."""
+    conn = None
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        # Convert category name to database format
+        category_db = category.lower().replace(" ", "_")
+
+        # Fetch the current amount before updating
+        cursor.execute("SELECT current_amount FROM financial_basics WHERE category = ?", (category_db,))
+        result = cursor.fetchone()
+        old_amount = result[0] if result else 0
+
+        # Calculate recommended amount for reference
+        if additional_info:
+            if category_db == "emergency_fund" and "monthly_expenses" in additional_info:
+                recommended = additional_info["monthly_expenses"] * 6
+            elif category_db == "health_insurance" and "family_members" in additional_info:
+                recommended = max(500000, additional_info["family_members"] * 200000)
+            elif category_db == "term_insurance" and "annual_income" in additional_info:
+                recommended = max(10000000, additional_info["annual_income"] * 10)
+        
+        # Use the user's target amount instead of the recommended amount
+        is_funded = current_amount >= target_amount
+
+        # Update the basic
+        cursor.execute("""
+            UPDATE financial_basics 
+            SET target_amount = ?,
+                current_amount = ?,
+                is_funded = ?,
+                last_updated = CURRENT_TIMESTAMP
+            WHERE category = ?
+        """, (target_amount, current_amount, is_funded, category_db))
+
+        # Log the change using the same connection
+        log_basics_change(category_db, old_amount, current_amount, notes, conn)
+
+        conn.commit()
+        return True
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        console.print(f"[red]Error updating financial basic: {str(e)}[/red]")
+        return False
+    finally:
+        if conn:
+            conn.close()
+
+def create_basics_history_table():
+    """Create table for tracking historical changes to basics."""
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS financial_basics_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT NOT NULL,
+            target_amount REAL NOT NULL,
+            current_amount REAL NOT NULL,
+            change_amount REAL NOT NULL,
+            change_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            notes TEXT
+        )
+    """)
+    
+    conn.commit()
+    conn.close()
+
+def log_basics_change(category, old_amount, new_amount, notes="", conn=None):
+    """Log changes to financial basics for historical tracking."""
+    should_close = False
+    if conn is None:
+        conn = connect_db()
+        should_close = True
+    
+    cursor = conn.cursor()
+    try:
+        # Get current target amount
+        cursor.execute("SELECT target_amount FROM financial_basics WHERE category = ?", (category,))
+        result = cursor.fetchone()
+        target_amount = result[0] if result else 0
+        
+        change_amount = new_amount - old_amount
+        
+        cursor.execute("""
+            INSERT INTO financial_basics_history 
+            (category, target_amount, current_amount, change_amount, notes)
+            VALUES (?, ?, ?, ?, ?)
+        """, (category, target_amount, new_amount, change_amount, notes))
+        
+        conn.commit()
+    finally:
+        if should_close:
+            conn.close()

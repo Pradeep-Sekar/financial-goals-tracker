@@ -31,17 +31,17 @@ A command-line tool for tracking financial goals, calculating required investmen
 2. Set up the virtual environment:
    ```sh
    uv venv
-   uv sync - to install and update packages based on the pyproject.toml file
+   uv pip install -e .  # Install package in editable mode
    ```
-3. Initialize the database:
+3. Run the application:
    ```sh
-   uv run main.py
+   uv run -m financial_goals_tracker.main
    ```
 
 ## Usage
 ### Running the application
 ```sh
-uv run main.py
+uv run -m financial_goals_tracker.main
 ```
 ### Example CLI Workflow
 ```

@@ -1,0 +1,4 @@
+id,category,target_amount,current_amount,is_funded,recommendation_formula,recommendation_description,last_updated
+1,emergency_fund,0.0,0.0,0,6 * monthly_expenses,Recommended: 6 months of monthly expenses,2025-03-05 00:20:05
+2,health_insurance,0.0,0.0,0,"max(500000, family_members * 200000)",Recommended: ₹5L or ₹2L per family member,2025-03-05 00:20:05
+3,term_insurance,0.0,0.0,0,"max(10000000, annual_income * 10)",Recommended: ₹1Cr or 10x annual income,2025-03-05 00:20:05

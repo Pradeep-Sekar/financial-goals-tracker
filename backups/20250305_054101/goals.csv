@@ -1,0 +1,2 @@
+id,goal_name,target_amount,contributions_total,time_horizon,cagr,investment_mode,initial_investment,sip_amount,start_date,notes,created_at
+1,Test Goal,100000.0,0.0,5,12.0,SIP,0.0,1500.0,2024-01-01,Test note,2025-03-05 00:11:01

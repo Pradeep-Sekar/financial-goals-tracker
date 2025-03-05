@@ -1,7 +1,7 @@
 [project]
 name = "financial-goals-tracker"
 version = "0.1.0"
-description = "Add your description here"
+description = "A command-line tool for tracking financial goals"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -15,5 +15,24 @@ dependencies = [
     "matplotlib",
 ]
 
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [project.scripts]
 financial-tracker = "financial_goals_tracker.main:main"
+
+[tool.pytest]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
